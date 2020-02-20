@@ -17,6 +17,8 @@ public class Player : MonoBehaviour
     private GameObject _laserPrefab;
     [SerializeField]
     private GameObject _tripleShotPrefab;
+    [SerializeField]
+    private GameObject _shotgunPrefab;
 
     private Vector3 _offsetLaser = new Vector3(0f, 1.08f, 0f);
     [SerializeField]
@@ -24,11 +26,20 @@ public class Player : MonoBehaviour
     private float _canFire = -1f;
     [SerializeField]
     private int _lives = 3;
+    
+    
+    private int _shieldHits = 3;
+
+    [SerializeField]
+    private int _ammoCount = 15;
 
     private SpawnManager _spawnManager;
     private bool _isTripleShotActive = false;
     private bool _isSpeedBoostActive = false;
     private bool _isShieldActive = false;
+    private bool _isThrusterActive = false;
+    private bool _thrusterCooldown = false;
+    private bool _isShotGunActive = false;
 
 
     //variable reference to shield visualizer
@@ -40,10 +51,12 @@ public class Player : MonoBehaviour
 
     private UIManager _uiManager;
 
+    private CameraShake _cameraShake;
+
 
     [SerializeField]
     private GameObject _rightEngine, _leftEngine;
-
+    
 
     [SerializeField]
     private AudioClip _laserClip;
@@ -53,6 +66,7 @@ public class Player : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+
         _rightEngine.SetActive(false);
         _leftEngine.SetActive(false);
 
@@ -61,6 +75,12 @@ public class Player : MonoBehaviour
         _uiManager = GameObject.Find("Canvas").GetComponent<UIManager>();
 
         transform.position = new Vector3(0, 0, 0);
+
+        _cameraShake = GameObject.Find("Main Camera").GetComponent<CameraShake>();
+        if(_cameraShake == null)
+        {
+            Debug.LogError("CameraShake is NULL");
+        }
 
         _spawnManager = GameObject.Find("Spawn_Manager").GetComponent<SpawnManager>();
         if (_spawnManager == null)
@@ -87,7 +107,7 @@ public class Player : MonoBehaviour
             Debug.LogError("ExplosionSource is NULL");
         }
 
-
+        
 
     }
 
@@ -96,14 +116,47 @@ public class Player : MonoBehaviour
     {
         PlayerMovement();
 
-        if (Input.GetKeyDown(KeyCode.Space) && Time.time > _canFire)
+        if (Input.GetKeyDown(KeyCode.Space) && Time.time > _canFire && _ammoCount > 0)
         {
             FireLaser();
         }
 
+        if (Input.GetKey(KeyCode.LeftShift))
+        {
+            _isThrusterActive = true;
+            Thrusters();
+            
+        }
+
+        if (Input.GetKeyUp(KeyCode.LeftShift))
+        {
+            ResetThruster();
+        }
 
     }
 
+    private void ResetThruster()
+    {
+        _isThrusterActive = false;
+        _speed = 10f;
+    }
+
+    private void Thrusters()
+    {
+        if(_speed < 30 && _isThrusterActive && !_thrusterCooldown)
+        {
+            _speed += 2;
+            
+        }
+
+
+        if (_isThrusterActive && !_thrusterCooldown)
+        {
+            _uiManager.UpdateThrusters();
+
+        }
+
+    }
 
     void PlayerMovement()
     {
@@ -139,11 +192,23 @@ public class Player : MonoBehaviour
         {
             _canFire = Time.time + _fireRate;
             Instantiate(_tripleShotPrefab, transform.position, Quaternion.identity);
+            _ammoCount--;
+            _uiManager.UpdateAmmo(_ammoCount);
+        }
+        else if (_isShotGunActive)
+        {
+            _canFire = Time.time + _fireRate;
+            Instantiate(_shotgunPrefab, transform.position + new Vector3(0, 1.25f, 0), Quaternion.identity);
+            _ammoCount--;
+            _uiManager.UpdateAmmo(_ammoCount);
         }
         else
         {
             _canFire = Time.time + _fireRate;
             Instantiate(_laserPrefab, transform.position + _offsetLaser, Quaternion.identity);
+            _ammoCount--;
+            _uiManager.UpdateAmmo(_ammoCount);
+
         }
 
         _audio.Play();
@@ -154,8 +219,26 @@ public class Player : MonoBehaviour
 
         if (_isShieldActive == true)
         {
-            _isShieldActive = false;
-            _shieldIcon.SetActive(false);
+            _shieldIcon.GetComponent<SpriteRenderer>().color = Color.white;
+            switch (_shieldHits)
+            {
+                case 3:
+                    _shieldHits--;
+                    _shieldIcon.GetComponent<SpriteRenderer>().color = Color.green;
+                    break;
+                case 2:
+                    _shieldIcon.GetComponent<SpriteRenderer>().color = Color.red;
+                    _shieldHits--;
+                    break;
+                case 1:
+                    _shieldHits--;
+                    _isShieldActive = false;
+                    _shieldIcon.SetActive(false);
+                    _shieldHits = 3;
+                    break;
+            }
+
+            
             return;
         }
 
@@ -182,12 +265,32 @@ public class Player : MonoBehaviour
 
             Destroy(this.gameObject);
         }
+
+        _cameraShake.Shake();
+
+    }
+
+    public void ThrusterOnCooldown()
+    {
+        _isThrusterActive = false;
+        _thrusterCooldown = true;
+    }
+
+    public void ThrusterCooldownReset()
+    {
+        _thrusterCooldown = false;
     }
 
     public void TripleShotActive()
     {
         _isTripleShotActive = true;
         StartCoroutine(TripleShotPowerDown());
+    }
+
+    public void ShotGunActive()
+    {
+        _isShotGunActive = true;
+        StartCoroutine(ShotGunPowerDownRoutine());
     }
 
     public void SpeedBoostActive()
@@ -210,9 +313,42 @@ public class Player : MonoBehaviour
         if (other.CompareTag("Enemy Fire"))
         {
             Damage();
-
         }
 
+    }
+
+    public void AddAmmo()
+    {
+        _ammoCount = 15;
+        _uiManager.UpdateAmmo(_ammoCount);
+    }
+
+    public void Heal()
+    {
+        _lives++;
+        _uiManager.UpdateLives(_lives);
+
+        switch (_lives)
+        {
+            case 2: //Going 1 to 2 health
+                _leftEngine.SetActive(false);
+                break;
+            case 3: //going 2 to 3 health
+                _rightEngine.SetActive(false);
+                break;
+            default:
+                break;
+        }
+
+
+
+    }
+
+
+    IEnumerator ShotGunPowerDownRoutine()
+    {
+        yield return new WaitForSeconds(5.0f);
+        _isShotGunActive = false;
     }
 
 
@@ -221,6 +357,7 @@ public class Player : MonoBehaviour
         yield return new WaitForSeconds(5.0f);
         _isSpeedBoostActive = false;
         _speed /= _speedMultiplier;
+
     }
 
 
