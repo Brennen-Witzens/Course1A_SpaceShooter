@@ -26,7 +26,12 @@ public class UIManager : MonoBehaviour
     [SerializeField]
     private Sprite[] _livesSprites;
 
-   
+
+    [SerializeField]
+    private Image _bossHealthBar;
+
+
+
 
     private GameManager _gameManager;
 
@@ -34,7 +39,7 @@ public class UIManager : MonoBehaviour
     void Start()
     {
         _player = GameObject.Find("Player").GetComponent<Player>();
-        if(_player == null)
+        if (_player == null)
         {
             Debug.LogError("Player is NULL");
         }
@@ -42,7 +47,7 @@ public class UIManager : MonoBehaviour
 
         _thrusterFuel.color = Color.green;
         _scoreText.text = "Score: " + 0;
-        _ammoAmountText.text = "Ammo Count: " + 15;
+        _ammoAmountText.text = "Current Ammo: 15/15";
         _gameOverText.gameObject.SetActive(false);
         _restartText.gameObject.SetActive(false);
         _gameManager = GameObject.Find("Game_Manager").GetComponent<GameManager>();
@@ -51,6 +56,23 @@ public class UIManager : MonoBehaviour
         {
             Debug.LogError("GameManager is NULL");
         }
+
+
+    }
+
+
+    public void UpdateBossHealthBar(float damage, float currentHealth, float maxHealth)
+    {
+
+        currentHealth -= damage;
+        _bossHealthBar.fillAmount = currentHealth / maxHealth;
+
+
+    }
+
+    public void TurnOnBossHealthBar()
+    {
+        _bossHealthBar.gameObject.SetActive(true);
     }
 
 
@@ -62,8 +84,13 @@ public class UIManager : MonoBehaviour
 
     public void UpdateLives(int currentLives)
     {
-        if(currentLives <= 3)
+
+        if (currentLives <= 3)
         {
+            if (currentLives < 0)
+            { 
+                return;
+            }
             _livesImage.sprite = _livesSprites[currentLives];
         }
         if (currentLives < 1)
@@ -72,9 +99,10 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    public void UpdateAmmo(int ammoCount)
+    public void UpdateAmmo(int ammoCount, int maxAmmo)
     {
-        _ammoAmountText.text = "Ammo Count: " + ammoCount;
+        
+        _ammoAmountText.text = "Current Ammo: " + ammoCount + "/" + maxAmmo;
     }
 
 

@@ -56,6 +56,8 @@ public class Powerup : MonoBehaviour
                     case 5: //Shotgun
                         player.ShotGunActive();
                         break;
+                    case 6: //NegativePickup
+                        break;
                     default:
                         Debug.Log("You somehow managed to get here?");
                         break;
@@ -65,6 +67,14 @@ public class Powerup : MonoBehaviour
 
             Destroy(this.gameObject);
         }
+
+        if(other.CompareTag("Enemy Fire"))
+        {
+            Destroy(this.gameObject);
+        }
+
+
+
     }
 
 

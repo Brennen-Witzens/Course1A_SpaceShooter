@@ -30,17 +30,18 @@ public class Player : MonoBehaviour
     
     private int _shieldHits = 3;
 
-    [SerializeField]
     private int _ammoCount = 15;
+    private int _maxAmmo = 15;
 
     private SpawnManager _spawnManager;
+    
     private bool _isTripleShotActive = false;
     private bool _isSpeedBoostActive = false;
     private bool _isShieldActive = false;
     private bool _isThrusterActive = false;
     private bool _thrusterCooldown = false;
     private bool _isShotGunActive = false;
-
+    private bool _stopMovement = false;
 
     //variable reference to shield visualizer
     [SerializeField]
@@ -56,17 +57,20 @@ public class Player : MonoBehaviour
 
     [SerializeField]
     private GameObject _rightEngine, _leftEngine;
-    
+    [SerializeField]
+    private GameObject _rightPara, _leftPara;
 
     [SerializeField]
     private AudioClip _laserClip;
     private AudioSource _audio;
     private AudioSource _explosionSource;
 
+    
+
     // Start is called before the first frame update
     void Start()
     {
-
+        
         _rightEngine.SetActive(false);
         _leftEngine.SetActive(false);
 
@@ -114,26 +118,38 @@ public class Player : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        PlayerMovement();
 
-        if (Input.GetKeyDown(KeyCode.Space) && Time.time > _canFire && _ammoCount > 0)
+        if (_stopMovement == false)
         {
-            FireLaser();
+            PlayerMovement();
+
+            if (Input.GetKeyDown(KeyCode.Space) && Time.time > _canFire && _ammoCount > 0)
+            {
+                FireLaser();
+            }
+
+            if (Input.GetKey(KeyCode.LeftShift))
+            {
+                _isThrusterActive = true;
+                Thrusters();
+
+            }
+
+            if (Input.GetKeyUp(KeyCode.LeftShift))
+            {
+                ResetThruster();
+            }
         }
 
-        if (Input.GetKey(KeyCode.LeftShift))
-        {
-            _isThrusterActive = true;
-            Thrusters();
-            
-        }
 
-        if (Input.GetKeyUp(KeyCode.LeftShift))
-        {
-            ResetThruster();
-        }
+      
+
 
     }
+
+    
+
+
 
     private void ResetThruster()
     {
@@ -157,6 +173,10 @@ public class Player : MonoBehaviour
         }
 
     }
+
+    
+
+
 
     void PlayerMovement()
     {
@@ -193,21 +213,21 @@ public class Player : MonoBehaviour
             _canFire = Time.time + _fireRate;
             Instantiate(_tripleShotPrefab, transform.position, Quaternion.identity);
             _ammoCount--;
-            _uiManager.UpdateAmmo(_ammoCount);
+            _uiManager.UpdateAmmo(_ammoCount,_maxAmmo);
         }
         else if (_isShotGunActive)
         {
             _canFire = Time.time + _fireRate;
             Instantiate(_shotgunPrefab, transform.position + new Vector3(0, 1.25f, 0), Quaternion.identity);
             _ammoCount--;
-            _uiManager.UpdateAmmo(_ammoCount);
+            _uiManager.UpdateAmmo(_ammoCount, _maxAmmo);
         }
         else
         {
             _canFire = Time.time + _fireRate;
             Instantiate(_laserPrefab, transform.position + _offsetLaser, Quaternion.identity);
             _ammoCount--;
-            _uiManager.UpdateAmmo(_ammoCount);
+            _uiManager.UpdateAmmo(_ammoCount, _maxAmmo);
 
         }
 
@@ -216,6 +236,7 @@ public class Player : MonoBehaviour
 
     public void Damage()
     {
+        
 
         if (_isShieldActive == true)
         {
@@ -309,22 +330,37 @@ public class Player : MonoBehaviour
 
     private void OnTriggerEnter2D(Collider2D other)
     {
-
+        
         if (other.CompareTag("Enemy Fire"))
         {
             Damage();
         }
+        else if (other.CompareTag("Negative_Pickup"))
+        {
+            StartCoroutine(ParalysisRoutine());
+        }
+        else if (other.CompareTag("Magnet"))
+        {
+            return;
+        }
 
     }
+
+
 
     public void AddAmmo()
     {
         _ammoCount = 15;
-        _uiManager.UpdateAmmo(_ammoCount);
+        _uiManager.UpdateAmmo(_ammoCount, _maxAmmo);
     }
 
     public void Heal()
     {
+        if (_lives == 3)
+        {
+            return;
+        }
+
         _lives++;
         _uiManager.UpdateLives(_lives);
 
@@ -343,6 +379,31 @@ public class Player : MonoBehaviour
 
 
     }
+
+
+    IEnumerator ParalysisRoutine()
+    {
+        _stopMovement = true;
+        StartCoroutine(ParalysisVisualRoutine());
+        yield return new WaitForSeconds(1.5f);
+        _stopMovement = false;
+    }
+
+    IEnumerator ParalysisVisualRoutine()
+    {
+        while(_stopMovement == true)
+        {
+
+            _rightPara.SetActive(true);
+            _leftPara.SetActive(true);
+            yield return new WaitForSeconds(.3f);
+            _rightPara.SetActive(false);
+            _leftPara.SetActive(false);
+            yield return new WaitForSeconds(.3f);
+
+        }
+    }
+
 
 
     IEnumerator ShotGunPowerDownRoutine()

@@ -35,8 +35,8 @@ public class ShotgunLaser : MonoBehaviour
     void Update()
     {
        
-        var x = transform.position.x - _player.position.x;
-        var y = transform.position.y - _player.position.y;
+        var x = transform.position.x;
+        var y = transform.position.y;
         _rotateAngle = _spreadAngle + (Mathf.Atan2(y,x) * Mathf.Rad2Deg);
 
         var _moveDir = new Vector2(Mathf.Cos(_rotateAngle * Mathf.Deg2Rad), Mathf.Sin(_rotateAngle * Mathf.Deg2Rad)).normalized;
